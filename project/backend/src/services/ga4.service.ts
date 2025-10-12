@@ -1,6 +1,6 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { BigQuery } from '@google-cloud/bigquery';  // เพิ่ม import สำหรับ BigQuery
-import { ga4Config } from '../config/ga4.config';
+import { ga4Config } from '../config/ga4.config.js'; // ✅ แก้เป็น .js
 import type { AnalyticsData, LiveUsersData, DetailedAnalytics } from '../types/analytics';
 
 class GA4Service {
@@ -12,7 +12,7 @@ class GA4Service {
     this.analyticsDataClient = new BetaAnalyticsDataClient({
       keyFilename: ga4Config.credentialsPath,
     });
-    this.bigquery = new BigQuery({ keyFilename: ga4Config.credentialsPath });  // เพิ่ม BigQuery client
+    this.bigquery = new BigQuery({ keyFilename: ga4Config.credentialsPath });
     this.propertyId = `properties/${ga4Config.propertyId}`;
     console.log('[GA4Service] Initialized with propertyId:', this.propertyId);
   }
@@ -83,7 +83,6 @@ class GA4Service {
     }
   }
 
-  // Fallback ถ้า BigQuery error (โค้ดเดิม)
   private async getLiveUsersFallback(): Promise<LiveUsersData> {
     console.log('[GA4Service] Falling back to GA4 realtime');
     try {
@@ -197,22 +196,19 @@ class GA4Service {
       return result;
     } catch (error) {
       console.error('[GA4Service] BigQuery error fetching detailed analytics:', error);
-      // Fallback ไป GA4 API เดิม
       return this.getDetailedAnalyticsFallback(startDate, endDate);
     }
   }
 
-  // Fallback สำหรับ detailed (โค้ดเดิมของคุณ)
   private async getDetailedAnalyticsFallback(startDate: string, endDate: string): Promise<DetailedAnalytics> {
     console.log('[GA4Service] getDetailedAnalytics fallback to GA4');
     try {
-      // Main report: ใช้ ['date', 'hour'] สำหรับ hourly data เพื่อให้มีเวลา
       const [mainReport] = await this.analyticsDataClient.runReport({
         property: this.propertyId,
         dateRanges: [{ startDate, endDate }],
         dimensions: [
-          { name: 'date' },  // YYYY-MM-DD
-          { name: 'hour' },  // 00-23
+          { name: 'date' },
+          { name: 'hour' },
         ],
         metrics: [
           { name: 'activeUsers' },
@@ -223,12 +219,11 @@ class GA4Service {
           { dimension: { dimensionName: 'date' }, desc: false },
           { dimension: { dimensionName: 'hour' }, desc: false },
         ],
-        limit: 10000,  // เพิ่ม limit เพื่อครอบคลุม hourly data (30 วัน ~720 rows)
+        limit: 10000,
       });
 
       console.log('[GA4Service] Main report (fallback):', mainReport);
 
-      // Reports สำหรับ sources, pages, countries, devices (aggregate daily)
       const [sourcesReport] = await this.analyticsDataClient.runReport({
         property: this.propertyId,
         dateRanges: [{ startDate, endDate }],
@@ -262,14 +257,13 @@ class GA4Service {
         dimensions: [{ name: 'deviceCategory' }],
         metrics: [{ name: 'activeUsers' }],
         orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
-        limit: 10,  // เพิ่ม limit ถ้าต้องการ devices มากกว่า
+        limit: 10,
       });
 
-      // Parse chartData: รวม date + hour เป็น YYYYMMDDHH string
       const chartData = mainReport.rows?.map(row => {
-        const dateStr = row.dimensionValues?.[0]?.value || '';  // YYYY-MM-DD
-        const hourStr = row.dimensionValues?.[1]?.value || '00'; // 00-23
-        const fullDateStr = dateStr.replace(/-/g, '') + hourStr.padStart(2, '0');  // YYYYMMDDHH
+        const dateStr = row.dimensionValues?.[0]?.value || '';
+        const hourStr = row.dimensionValues?.[1]?.value || '00';
+        const fullDateStr = dateStr.replace(/-/g, '') + hourStr.padStart(2, '0');
 
         return {
           date: fullDateStr,
