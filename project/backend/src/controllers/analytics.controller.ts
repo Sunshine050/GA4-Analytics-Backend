@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import ga4Service from '../services/ga4.service';
+import ga4Service from '../services/ga4.service.js';
 
 export class AnalyticsController {
   async getAnalytics(req: Request, res: Response) {
