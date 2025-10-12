@@ -1,8 +1,9 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import analyticsRoutes from './routes/analytics.routes';
-import { errorHandler } from './middleware/error.middleware';
+import analyticsRoutes from './routes/analytics.routes.js';
+import { errorHandler } from './middleware/error.middleware.js';
+
 
 dotenv.config();
 
