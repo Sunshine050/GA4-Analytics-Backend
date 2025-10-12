@@ -343,7 +343,7 @@ export default function AnalyticsDashboard() {
             </div>
             <div className="flex items-center space-x-2 text-sm text-neutral-400">
               <Calendar className="w-4 h-4" />
-              <span>{startDate} - {endDate}</span>
+              {/* <span>{startDate} - {endDate}</span> */}
             </div>
           </div>
           <div className="h-80 lg:h-96 relative">
