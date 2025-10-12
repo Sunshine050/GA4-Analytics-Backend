@@ -1,4 +1,4 @@
-import app from './app';
+import app from './app.js'; 
 import { serverConfig } from './config/ga4.config';
 
 const PORT = serverConfig.port;
