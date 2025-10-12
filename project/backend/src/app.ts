@@ -8,9 +8,17 @@ dotenv.config();
 
 const app = express();
 
-// CORS – แก้ origin ให้ตรง frontend port (เพิ่ม 5173)
+// ✅ CORS
+// อ่าน frontend URL จาก .env (local + production)
+// ใช้ type guard filter เพื่อให้ TypeScript รู้ว่าไม่มี undefined
+const allowedOrigins: (string | boolean | RegExp)[] = [
+  'http://localhost:5173', // Vite dev server
+  'http://localhost:5174', // เพิ่มถ้ามี
+  process.env.VITE_FRONTEND_URL
+].filter((origin): origin is string => Boolean(origin));
+
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: allowedOrigins,
     credentials: true,
 }));
 
