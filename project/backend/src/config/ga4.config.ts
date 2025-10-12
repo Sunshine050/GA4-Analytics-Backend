@@ -1,5 +1,6 @@
-import dotenv from 'dotenv';
+// src/config/ga4.config.ts
 import path from 'path';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -12,6 +13,6 @@ export const ga4Config = {
 };
 
 export const serverConfig = {
-  port: process.env.PORT || 3000,
+  port: Number(process.env.PORT) || 3000,
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 };

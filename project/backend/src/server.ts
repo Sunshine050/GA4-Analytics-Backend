@@ -1,5 +1,6 @@
-import app from './app.js'; 
-import { serverConfig } from './config/ga4.config';
+// src/server.ts
+import app from './app.js';
+import { serverConfig } from './config/ga4.config.js'; // เพิ่ม .js สำหรับ ES Modules หลัง compile
 
 const PORT = serverConfig.port;
 
