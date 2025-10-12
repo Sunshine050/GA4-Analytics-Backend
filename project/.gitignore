@@ -26,6 +26,7 @@ dist-ssr
 
 # Environment files
 .env
+.env.production
 
 # Google Service Account
 service-account.json
