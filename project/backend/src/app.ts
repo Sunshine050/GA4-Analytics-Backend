@@ -8,7 +8,7 @@ dotenv.config();
 
 const app = express();
 
-// ✅ CORS: local dev + production frontend
+// ---------- CORS ----------
 const allowedOrigins: (string | boolean | RegExp)[] = [
   'http://localhost:5173', // Vite dev server
   'http://localhost:5174', // เพิ่ม local dev port
@@ -20,25 +20,19 @@ app.use(cors({
   credentials: true,
 }));
 
-// Body parser
+// ---------- Body parser ----------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// ---------- Health check ----------
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'GA4 Analytics API is running' });
 });
 
-// Routes
+// ---------- Routes ----------
 app.use('/analytics', analyticsRoutes);
 
-// Error handler
+// ---------- Error handler ----------
 app.use(errorHandler);
-
-// Start server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`GA4 Analytics backend running on port ${PORT}`);
-});
 
 export default app;
