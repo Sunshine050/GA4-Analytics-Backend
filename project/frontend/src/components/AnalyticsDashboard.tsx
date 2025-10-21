@@ -228,6 +228,21 @@ export default function AnalyticsDashboard() {
     return () => clearInterval(interval);
   }, [endDate]);
 
+  // Auto-update endDate to current date every day (or on mount)
+  useEffect(() => {
+    const updateEndDate = () => {
+      const currentDate = new Date().toISOString().slice(0, 10);
+      setEndDate(currentDate);
+    };
+
+    updateEndDate(); // Initial set
+
+    // Update daily at midnight (approx 24 hours)
+    const dailyInterval = setInterval(updateEndDate, 24 * 60 * 60 * 1000);
+
+    return () => clearInterval(dailyInterval);
+  }, []); // Run once on mount
+
   // Initial load only (no dependency on startDate/endDate to prevent auto-fetch)
   useEffect(() => {
     fetchAnalytics();
@@ -320,13 +335,10 @@ export default function AnalyticsDashboard() {
                 onChange={(e) => setStartDate(e.target.value)}
                 className="bg-neutral-800/70 text-white border border-neutral-700 rounded-lg p-2 focus:border-cyan-500 focus:outline-none transition-colors"
               />
-              <span className="text-neutral-500">-</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="bg-neutral-800/70 text-white border border-neutral-700 rounded-lg p-2 focus:border-cyan-500 focus:outline-none transition-colors"
-              />
+              <span className="text-neutral-500">ถึง</span>
+              <span className="bg-neutral-800/70 text-white border border-neutral-700 rounded-lg p-2 px-3 min-w-[120px] text-center">
+                {endDate} (ปัจจุบัน)
+              </span>
             </div>
             <button
               onClick={fetchAnalytics}
@@ -392,11 +404,6 @@ export default function AnalyticsDashboard() {
           </div>
           <div className="h-80 lg:h-96 relative">
             <AnalyticsChart data={displayChartData} />
-            <div className="absolute top-0 right-0 mt-4 mr-4">
-              <button className="bg-neutral-800/50 hover:bg-neutral-700 text-neutral-300 p-2 rounded-full transition-colors">
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         </div>
 
