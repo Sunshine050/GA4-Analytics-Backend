@@ -335,7 +335,6 @@ export default function AnalyticsDashboard() {
                 onChange={(e) => setStartDate(e.target.value)}
                 className="bg-neutral-800/70 text-white border border-neutral-700 rounded-lg p-2 focus:border-cyan-500 focus:outline-none transition-colors"
               />
-              <span className="text-neutral-500">ถึง</span>
               <span className="bg-neutral-800/70 text-white border border-neutral-700 rounded-lg p-2 px-3 min-w-[120px] text-center">
                 {endDate} (ปัจจุบัน)
               </span>
