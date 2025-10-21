@@ -6,13 +6,11 @@ import {
   MousePointer,
   Clock,
   Calendar,
-  Download,
   Filter,
   Globe,
   FileText,
   MapPin,
   Smartphone,
-  Monitor,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -35,11 +33,11 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 interface AnalyticsChartProps {
   data: Array<{
-    date: string; // Formatted date for labels
+    date: string;
     users: number;
     pageViews: number;
     sessions: number;
-    topPage?: string; // Optional, from backend
+    topPage?: string;
   }>;
 }
 
@@ -113,7 +111,7 @@ function AnalyticsChart({ data }: AnalyticsChartProps) {
     scales: {
       x: {
         grid: { color: 'rgba(148, 163, 184, 0.1)' },
-        ticks: { color: '#94a3b8', maxTicksLimit: 20 }, // เพิ่ม maxTicksLimit สำหรับ hourly data
+        ticks: { color: '#94a3b8', maxTicksLimit: 20 },
       },
       y: {
         grid: { color: 'rgba(148, 163, 184, 0.1)' },
@@ -136,21 +134,41 @@ function AnalyticsChart({ data }: AnalyticsChartProps) {
 export default function AnalyticsDashboard() {
   const [liveUsers, setLiveUsers] = useState(0);
   const [analytics, setAnalytics] = useState<DetailedAnalytics | null>(null);
+  const [summary, setSummary] = useState<{
+    totalUsers: number;
+    totalPageViews: number;
+    totalSessions: number;
+    avgSessionDuration: number;
+    bounceRate: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Manual date formatting to avoid timezone issues
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
-    return d.toISOString().slice(0, 10);
+    return formatDate(d);
   });
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => formatDate(new Date()));
 
-  // Helper function to format dates in Thai
+  // Format date range for display
   const formatDateRange = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const formatDate = (dateStr: string, includeTime: boolean = false) => {
-      const date = new Date(dateStr + (includeTime ? 'T' + new Date().toISOString().slice(11, 16) : 'T00:00:00'));
+    const today = formatDate(new Date());
+    const parseDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    };
+
+    const formatDisplay = (dateStr: string, includeTime: boolean = false) => {
+      const date = parseDate(dateStr);
       const options: Intl.DateTimeFormatOptions = {
         year: 'numeric',
         month: 'short',
@@ -159,24 +177,24 @@ export default function AnalyticsDashboard() {
       if (includeTime) {
         options.hour = '2-digit';
         options.minute = '2-digit';
+        options.hour12 = false;
       }
-      return date.toLocaleDateString('th-TH', options);
+      return date.toLocaleString('th-TH', options);
     };
 
-    const startFormatted = formatDate(startDate);
-    let endFormatted = formatDate(endDate);
+    const startFormatted = formatDisplay(startDate);
+    let endFormatted = formatDisplay(endDate);
     if (endDate === today) {
-      endFormatted = formatDate(endDate, true); // Include current time if endDate is today
+      endFormatted = formatDisplay(endDate, true);
     }
 
     return { start: startFormatted, end: endFormatted };
   }, [startDate, endDate]);
 
-  // Chart data with formatted dates for better labels (including hour)
+  // Chart data with formatted dates
   const displayChartData = useMemo(() => {
     if (!analytics?.chartData) return [];
     return analytics.chartData.map((d) => {
-      // Handle date format YYYYMMDDHH -> extract YYYY, MM, DD, HH
       const year = parseInt(d.date.slice(0, 4));
       const month = parseInt(d.date.slice(4, 6)) - 1;
       const day = parseInt(d.date.slice(6, 8));
@@ -184,13 +202,13 @@ export default function AnalyticsDashboard() {
       const dateObj = new Date(year, month, day, hour);
       const formattedDate = dateObj.toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
       const formattedTime = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
-      const label = `${formattedDate} ${formattedTime}`; // e.g., "22 ต.ค. 14:00"
+      const label = `${formattedDate} ${formattedTime}`;
       return {
         date: label,
         users: d.users || 0,
         pageViews: d.pageViews || 0,
         sessions: d.sessions || 0,
-        topPage: d.page || 'N/A', // Fallback if no page data
+        topPage: d.page || 'N/A',
       };
     });
   }, [analytics]);
@@ -200,56 +218,65 @@ export default function AnalyticsDashboard() {
   const countries = analytics?.countries || [];
   const devices = analytics?.devices || [];
 
-  const totals = useMemo(() => {
-    return displayChartData.reduce(
-      (acc, day) => ({
-        totalUsers: acc.totalUsers + day.users,
-        totalPageViews: acc.totalPageViews + day.pageViews,
-        totalSessions: acc.totalSessions + day.sessions,
-      }),
-      { totalUsers: 0, totalPageViews: 0, totalSessions: 0 }
-    );
-  }, [displayChartData]);
+  // Use summary data for metrics
+  const totals = useMemo(() => ({
+    totalUsers: summary?.totalUsers || 0,
+    totalPageViews: summary?.totalPageViews || 0,
+    totalSessions: summary?.totalSessions || 0,
+    avgSessionDuration: summary?.avgSessionDuration || 120, // Fallback
+    bounceRate: summary?.bounceRate || 34.8, // Fallback
+  }), [summary]);
 
-  // Fix: This was averaging sessions count, not duration. Hardcode or fetch real avgSessionDuration from GA4
-  const avgSessionDuration = 120; // Example: 2 minutes in seconds; make dynamic later
-  const bounceRate = 34.8; // Dynamic from GA4 later
-
-  // Real-time update for endDate if it's today (update display every minute)
+  // Real-time update for endDate if today
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    if (endDate !== today) return; // Only if endDate is today
+    const today = formatDate(new Date());
+    if (endDate !== today) return;
 
     const interval = setInterval(() => {
-      // This will trigger re-render via useMemo dependency, but doesn't change state unless needed
-      // For API, keep date only; display handles time
-    }, 60000); // Every minute
+      // Trigger re-render via formatDateRange dependency
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [endDate]);
 
-  // Auto-update endDate to current date every day (or on mount)
+  // Auto-update endDate daily
   useEffect(() => {
     const updateEndDate = () => {
-      const currentDate = new Date().toISOString().slice(0, 10);
-      setEndDate(currentDate);
+      setEndDate(formatDate(new Date()));
     };
 
-    updateEndDate(); // Initial set
-
-    // Update daily at midnight (approx 24 hours)
+    updateEndDate();
     const dailyInterval = setInterval(updateEndDate, 24 * 60 * 60 * 1000);
 
     return () => clearInterval(dailyInterval);
-  }, []); // Run once on mount
+  }, []);
 
-  // Initial load only (no dependency on startDate/endDate to prevent auto-fetch)
+  // Fetch data on mount
   useEffect(() => {
-    fetchAnalytics();
-    fetchLiveUsers();
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [detailedData, summaryData] = await Promise.all([
+          analyticsApi.getDetailedAnalytics(startDate, endDate),
+          analyticsApi.getSummaryAnalytics(startDate, endDate),
+        ]);
+        setAnalytics(detailedData);
+        setSummary(summaryData);
+        setError(null);
+      } catch (err) {
+        console.error('[fetchData] Error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+        setAnalytics(null);
+        setSummary(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
     const liveInterval = setInterval(fetchLiveUsers, 30000);
     return () => clearInterval(liveInterval);
-  }, []); // Empty dependency array: run once on mount
+  }, []); // Run once on mount
 
   const fetchLiveUsers = async () => {
     try {
@@ -258,21 +285,6 @@ export default function AnalyticsDashboard() {
     } catch (err) {
       console.error('[fetchLiveUsers] Error:', err);
       setLiveUsers(0);
-    }
-  };
-
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const data = await analyticsApi.getDetailedAnalytics(startDate, endDate);
-      setAnalytics(data);
-      setError(null);
-    } catch (err) {
-      console.error('[fetchAnalytics] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
-      setAnalytics(null);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -300,11 +312,27 @@ export default function AnalyticsDashboard() {
           <div className="text-red-400 text-2xl mb-4">เกิดข้อผิดพลาด</div>
           <div className="text-neutral-300 mb-6">{error}</div>
           <button
-            onClick={fetchAnalytics}
+            onClick={() => {
+              setLoading(true);
+              Promise.all([
+                analyticsApi.getDetailedAnalytics(startDate, endDate),
+                analyticsApi.getSummaryAnalytics(startDate, endDate),
+              ])
+                .then(([detailedData, summaryData]) => {
+                  setAnalytics(detailedData);
+                  setSummary(summaryData);
+                  setError(null);
+                })
+                .catch((err) => {
+                  setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+                  setAnalytics(null);
+                  setSummary(null);
+                })
+                .finally(() => setLoading(false));
+            }}
             className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition-all duration-200 flex items-center space-x-2 mx-auto"
           >
             <span>ลองใหม่อีกครั้ง</span>
-            <Download className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -314,7 +342,6 @@ export default function AnalyticsDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-neutral-900 to-black text-white p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8">
-
         {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 bg-neutral-900/30 backdrop-blur-sm border border-neutral-800/30 rounded-2xl p-6 shadow-xl">
           <div className="space-y-2">
@@ -341,7 +368,24 @@ export default function AnalyticsDashboard() {
               </span>
             </div>
             <button
-              onClick={fetchAnalytics}
+              onClick={() => {
+                setLoading(true);
+                Promise.all([
+                  analyticsApi.getDetailedAnalytics(startDate, endDate),
+                  analyticsApi.getSummaryAnalytics(startDate, endDate),
+                ])
+                  .then(([detailedData, summaryData]) => {
+                    setAnalytics(detailedData);
+                    setSummary(summaryData);
+                    setError(null);
+                  })
+                  .catch((err) => {
+                    setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+                    setAnalytics(null);
+                    setSummary(null);
+                  })
+                  .finally(() => setLoading(false));
+              }}
               className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-black font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow-lg hover:shadow-cyan-500/25"
             >
               <Filter className="w-4 h-4" />
@@ -352,39 +396,39 @@ export default function AnalyticsDashboard() {
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 lg:gap-6">
-          <MetricCard 
-            label="ผู้เยี่ยมชมสด" 
-            value={liveUsers.toLocaleString()} 
-            icon={<Activity className="w-5 h-5 text-cyan-400" />} 
-            isLive 
+          <MetricCard
+            label="ผู้เยี่ยมชมสด"
+            value={liveUsers.toLocaleString()}
+            icon={<Activity className="w-5 h-5 text-cyan-400" />}
+            isLive
             gradient="from-cyan-500/20 via-blue-500/20 to-indigo-500/20"
             className="hover:scale-105 transition-transform duration-200"
           />
-          <MetricCard 
-            label="ผู้ใช้ไม่ซ้ำ" 
-            value={totals.totalUsers.toLocaleString()} 
-            icon={<Users className="w-5 h-5 text-indigo-400" />} 
+          <MetricCard
+            label="ผู้ใช้ไม่ซ้ำ"
+            value={totals.totalUsers.toLocaleString()}
+            icon={<Users className="w-5 h-5 text-indigo-400" />}
             gradient="from-indigo-500/20 via-purple-500/20 to-violet-500/20"
             className="hover:scale-105 transition-transform duration-200"
           />
-          <MetricCard 
-            label="จำนวนหน้าชม" 
-            value={totals.totalPageViews.toLocaleString()} 
-            icon={<Eye className="w-5 h-5 text-emerald-400" />} 
+          <MetricCard
+            label="จำนวนหน้าชม"
+            value={totals.totalPageViews.toLocaleString()}
+            icon={<Eye className="w-5 h-5 text-emerald-400" />}
             gradient="from-emerald-500/20 via-teal-500/20 to-green-500/20"
             className="hover:scale-105 transition-transform duration-200"
           />
-          <MetricCard 
-            label="อัตราคืน" 
-            value={`${bounceRate}%`} 
-            icon={<MousePointer className="w-5 h-5 text-amber-400" />} 
+          <MetricCard
+            label="อัตราคืน"
+            value={`${totals.bounceRate}%`}
+            icon={<MousePointer className="w-5 h-5 text-amber-400" />}
             gradient="from-amber-500/20 via-orange-500/20 to-red-500/20"
             className="hover:scale-105 transition-transform duration-200"
           />
-          <MetricCard 
-            label="เซสชันเฉลี่ย" 
-            value={formatDuration(avgSessionDuration)} 
-            icon={<Clock className="w-5 h-5 text-rose-400" />} 
+          <MetricCard
+            label="เซสชันเฉลี่ย"
+            value={formatDuration(totals.avgSessionDuration)}
+            icon={<Clock className="w-5 h-5 text-rose-400" />}
             gradient="from-rose-500/20 via-pink-500/20 to-fuchsia-500/20"
             className="hover:scale-105 transition-transform duration-200"
           />
@@ -485,7 +529,15 @@ export default function AnalyticsDashboard() {
 
         {/* Footer Note */}
         <div className="text-center text-sm text-neutral-500 pt-8 border-t border-neutral-800/30">
-          ข้อมูลอัปเดตครั้งล่าสุด: {new Date().toLocaleDateString('th-TH')}
+          ข้อมูลอัปเดตครั้งล่าสุด: {new Date().toLocaleString('th-TH', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+          })}
         </div>
       </div>
     </div>
