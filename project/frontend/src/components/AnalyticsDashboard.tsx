@@ -6,6 +6,7 @@ import {
   MousePointer,
   Clock,
   Calendar,
+  Download,
   Filter,
   Globe,
   FileText,
@@ -25,7 +26,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { analyticsApi } from '../services/api';
-import { DetailedAnalytics, LiveUsersData, AnalyticsData } from '../types/analytics';
+import { DetailedAnalytics, LiveUsersData } from '../types/analytics';
 import MetricCard from './MetricCard';
 import DataList from './DataList';
 
@@ -135,7 +136,6 @@ function AnalyticsChart({ data }: AnalyticsChartProps) {
 export default function AnalyticsDashboard() {
   const [liveUsers, setLiveUsers] = useState(0);
   const [analytics, setAnalytics] = useState<DetailedAnalytics | null>(null);
-  const [summary, setSummary] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,12 +146,11 @@ export default function AnalyticsDashboard() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
 
-  // Helper function to format dates in Thai (updated for accurate time)
+  // Helper function to format dates in Thai
   const formatDateRange = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
-    const now = new Date(); // Current time for real-time display
     const formatDate = (dateStr: string, includeTime: boolean = false) => {
-      const date = new Date(dateStr + (includeTime ? 'T' + now.toISOString().slice(11, 16) : 'T00:00:00'));
+      const date = new Date(dateStr + (includeTime ? 'T' + new Date().toISOString().slice(11, 16) : 'T00:00:00'));
       const options: Intl.DateTimeFormatOptions = {
         year: 'numeric',
         month: 'short',
@@ -201,18 +200,20 @@ export default function AnalyticsDashboard() {
   const countries = analytics?.countries || [];
   const devices = analytics?.devices || [];
 
-  // Use summary data for totals (dynamic from API)
   const totals = useMemo(() => {
-    return {
-      totalUsers: summary?.totalVisitors || 0,
-      totalPageViews: summary?.totalPageViews || 0,
-      totalSessions: summary?.totalSessions || 0,
-    };
-  }, [summary]);
+    return displayChartData.reduce(
+      (acc, day) => ({
+        totalUsers: acc.totalUsers + day.users,
+        totalPageViews: acc.totalPageViews + day.pageViews,
+        totalSessions: acc.totalSessions + day.sessions,
+      }),
+      { totalUsers: 0, totalPageViews: 0, totalSessions: 0 }
+    );
+  }, [displayChartData]);
 
-  // Dynamic from API (no hardcode)
-  const avgSessionDuration = summary?.averageSessionDuration || 0;
-  const bounceRate = summary?.bounceRate || 0;
+  // Fix: This was averaging sessions count, not duration. Hardcode or fetch real avgSessionDuration from GA4
+  const avgSessionDuration = 120; // Example: 2 minutes in seconds; make dynamic later
+  const bounceRate = 34.8; // Dynamic from GA4 later
 
   // Real-time update for endDate if it's today (update display every minute)
   useEffect(() => {
@@ -263,24 +264,13 @@ export default function AnalyticsDashboard() {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      // Fetch both detailed and summary data
-      const [detailedData] = await Promise.all([
-        analyticsApi.getDetailedAnalytics(startDate, endDate),
-        analyticsApi.getAnalyticsData(startDate, endDate), // Assume this method exists in analyticsApi
-      ]);
-      setAnalytics(detailedData);
-      setSummary(detailedData); // Wait, no: detailedData is DetailedAnalytics, second is AnalyticsData
-      // Correction: separate calls
-      const detailed = await analyticsApi.getDetailedAnalytics(startDate, endDate);
-      const summ = await analyticsApi.getAnalyticsData(startDate, endDate);
-      setAnalytics(detailed);
-      setSummary(summ);
+      const data = await analyticsApi.getDetailedAnalytics(startDate, endDate);
+      setAnalytics(data);
       setError(null);
     } catch (err) {
       console.error('[fetchAnalytics] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
       setAnalytics(null);
-      setSummary(null);
     } finally {
       setLoading(false);
     }
@@ -314,6 +304,7 @@ export default function AnalyticsDashboard() {
             className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl transition-all duration-200 flex items-center space-x-2 mx-auto"
           >
             <span>ลองใหม่อีกครั้ง</span>
+            <Download className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -492,9 +483,9 @@ export default function AnalyticsDashboard() {
           </div>
         </div>
 
-        {/* Footer Note - Updated to include time */}
+        {/* Footer Note */}
         <div className="text-center text-sm text-neutral-500 pt-8 border-t border-neutral-800/30">
-          ข้อมูลอัปเดตครั้งล่าสุด: {new Date().toLocaleString('th-TH')}
+          ข้อมูลอัปเดตครั้งล่าสุด: {new Date().toLocaleDateString('th-TH')}
         </div>
       </div>
     </div>
