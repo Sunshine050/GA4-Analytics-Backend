@@ -113,7 +113,7 @@ function AnalyticsChart({ data }: AnalyticsChartProps) {
     scales: {
       x: {
         grid: { color: 'rgba(148, 163, 184, 0.1)' },
-        ticks: { color: '#94a3b8', maxTicksLimit: 10 },
+        ticks: { color: '#94a3b8', maxTicksLimit: 20 }, // เพิ่ม maxTicksLimit สำหรับ hourly data
       },
       y: {
         grid: { color: 'rgba(148, 163, 184, 0.1)' },
@@ -172,17 +172,21 @@ export default function AnalyticsDashboard() {
     return { start: startFormatted, end: endFormatted };
   }, [startDate, endDate]);
 
-  // Chart data with formatted dates for better labels
+  // Chart data with formatted dates for better labels (including hour)
   const displayChartData = useMemo(() => {
     if (!analytics?.chartData) return [];
     return analytics.chartData.map((d) => {
-      // Handle date format YYYYMMDDHH -> extract YYYY, MM, DD
+      // Handle date format YYYYMMDDHH -> extract YYYY, MM, DD, HH
       const year = parseInt(d.date.slice(0, 4));
       const month = parseInt(d.date.slice(4, 6)) - 1;
       const day = parseInt(d.date.slice(6, 8));
-      const formattedDate = new Date(year, month, day).toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
+      const hour = parseInt(d.date.slice(8, 10));
+      const dateObj = new Date(year, month, day, hour);
+      const formattedDate = dateObj.toLocaleDateString('th-TH', { month: 'short', day: 'numeric' });
+      const formattedTime = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const label = `${formattedDate} ${formattedTime}`; // e.g., "22 ต.ค. 14:00"
       return {
-        date: formattedDate,
+        date: label,
         users: d.users || 0,
         pageViews: d.pageViews || 0,
         sessions: d.sessions || 0,
@@ -224,12 +228,13 @@ export default function AnalyticsDashboard() {
     return () => clearInterval(interval);
   }, [endDate]);
 
+  // Initial load only (no dependency on startDate/endDate to prevent auto-fetch)
   useEffect(() => {
     fetchAnalytics();
     fetchLiveUsers();
     const liveInterval = setInterval(fetchLiveUsers, 30000);
     return () => clearInterval(liveInterval);
-  }, [startDate, endDate]);
+  }, []); // Empty dependency array: run once on mount
 
   const fetchLiveUsers = async () => {
     try {
@@ -304,10 +309,10 @@ export default function AnalyticsDashboard() {
             <p className="text-sm text-neutral-400">ดูภาพรวมประสิทธิภาพเว็บไซต์ของคุณ</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-            {/* <div className="flex items-center space-x-2 text-sm text-neutral-400 bg-neutral-800/50 rounded-xl px-3 py-2">
+            <div className="flex items-center space-x-2 text-sm text-neutral-400 bg-neutral-800/50 rounded-xl px-3 py-2">
               <Calendar className="w-4 h-4" />
               <span>{formatDateRange.start} ถึง {formatDateRange.end}</span>
-            </div> */}
+            </div>
             <div className="flex items-center space-x-2">
               <input
                 type="date"
@@ -378,7 +383,7 @@ export default function AnalyticsDashboard() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
             <div>
               <h3 className="text-xl lg:text-2xl font-semibold text-neutral-100 mb-1">ภาพรวมการเข้าชม</h3>
-              <p className="text-sm text-neutral-500">แนวโน้มข้อมูลในช่วง {displayChartData.length} วัน</p>
+              <p className="text-sm text-neutral-500">แนวโน้มข้อมูลในช่วง {displayChartData.length} ชั่วโมง/วัน</p>
             </div>
             <div className="flex items-center space-x-2 text-sm text-neutral-400">
               <Calendar className="w-4 h-4" />
