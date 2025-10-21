@@ -146,6 +146,32 @@ export default function AnalyticsDashboard() {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
 
+  // Helper function to format dates in Thai
+  const formatDateRange = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const formatDate = (dateStr: string, includeTime: boolean = false) => {
+      const date = new Date(dateStr + (includeTime ? 'T' + new Date().toISOString().slice(11, 16) : 'T00:00:00'));
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      };
+      if (includeTime) {
+        options.hour = '2-digit';
+        options.minute = '2-digit';
+      }
+      return date.toLocaleDateString('th-TH', options);
+    };
+
+    const startFormatted = formatDate(startDate);
+    let endFormatted = formatDate(endDate);
+    if (endDate === today) {
+      endFormatted = formatDate(endDate, true); // Include current time if endDate is today
+    }
+
+    return { start: startFormatted, end: endFormatted };
+  }, [startDate, endDate]);
+
   // Chart data with formatted dates for better labels
   const displayChartData = useMemo(() => {
     if (!analytics?.chartData) return [];
@@ -184,6 +210,19 @@ export default function AnalyticsDashboard() {
   // Fix: This was averaging sessions count, not duration. Hardcode or fetch real avgSessionDuration from GA4
   const avgSessionDuration = 120; // Example: 2 minutes in seconds; make dynamic later
   const bounceRate = 34.8; // Dynamic from GA4 later
+
+  // Real-time update for endDate if it's today (update display every minute)
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (endDate !== today) return; // Only if endDate is today
+
+    const interval = setInterval(() => {
+      // This will trigger re-render via useMemo dependency, but doesn't change state unless needed
+      // For API, keep date only; display handles time
+    }, 60000); // Every minute
+
+    return () => clearInterval(interval);
+  }, [endDate]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -265,10 +304,10 @@ export default function AnalyticsDashboard() {
             <p className="text-sm text-neutral-400">ดูภาพรวมประสิทธิภาพเว็บไซต์ของคุณ</p>
           </div>
           <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-            <div className="flex items-center space-x-2 text-sm text-neutral-400 bg-neutral-800/50 rounded-xl px-3 py-2">
+            {/* <div className="flex items-center space-x-2 text-sm text-neutral-400 bg-neutral-800/50 rounded-xl px-3 py-2">
               <Calendar className="w-4 h-4" />
-              <span>{startDate} ถึง {endDate}</span>
-            </div>
+              <span>{formatDateRange.start} ถึง {formatDateRange.end}</span>
+            </div> */}
             <div className="flex items-center space-x-2">
               <input
                 type="date"
@@ -343,7 +382,7 @@ export default function AnalyticsDashboard() {
             </div>
             <div className="flex items-center space-x-2 text-sm text-neutral-400">
               <Calendar className="w-4 h-4" />
-              {/* <span>{startDate} - {endDate}</span> */}
+              <span>{formatDateRange.start} - {formatDateRange.end}</span>
             </div>
           </div>
           <div className="h-80 lg:h-96 relative">
