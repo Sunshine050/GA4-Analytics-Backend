@@ -2,15 +2,20 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import app from './app.js';
-import { serverConfig } from './config/ga4.config.js'; // สำหรับ ES Modules หลัง compile
+import { serverConfig } from './config/ga4.config.js';
 
+// ---------- Load environment variables ----------
 dotenv.config();
+
+// ---------- Resolve base directory ----------
+const BASE_DIR = process.cwd();
 
 // ---------- Load GA4 Service Account ----------
 
 // Local development
 if (process.env.NODE_ENV !== 'production') {
-  const localPath = path.resolve('./service-account.json'); // อยู่ใน backend folder
+  const localPath = path.join(BASE_DIR, 'service-account.json');
+
   if (fs.existsSync(localPath)) {
     process.env.GOOGLE_APPLICATION_CREDENTIALS = localPath;
     console.log('✅ Using local service-account.json for GA4');
@@ -21,12 +26,14 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Production (Render / Vercel)
 if (process.env.NODE_ENV === 'production') {
-  const secretPath = '/etc/secrets/service-account.json'; // Path ของ Secret File บน Render
+  // Render Secret File path
+  const secretPath = '/etc/secrets/service-account.json';
+
   if (fs.existsSync(secretPath)) {
     process.env.GOOGLE_APPLICATION_CREDENTIALS = secretPath;
-    console.log('✅ Using Render Secret File for GA4');
+    console.log('✅ Using production Secret File for GA4');
   } else {
-    console.warn('⚠️ Render Secret File not found! Check path.');
+    console.warn('⚠️ Production Secret File not found! Check secret path.');
   }
 }
 
@@ -34,7 +41,7 @@ if (process.env.NODE_ENV === 'production') {
 const PORT = process.env.PORT || serverConfig.port || 3001;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
-  console.log(`📊 GA4 Analytics API ready`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log('📊 GA4 Analytics API ready');
+  console.log(`🔗 Health check: /health`);
 });
