@@ -23,14 +23,16 @@ app.use(cors({
     // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // ตรวจสอบว่าอยู่ในรายการที่อนุญาต หรือเป็น subdomain ของ vercel.app
-    const isAllowed = allowedOrigins.includes(origin);
-    const isVercel = origin.endsWith('.vercel.app');
+    console.log(`🔍 [CORS DEBUG] Request from: ${origin}`);
 
-    if (isAllowed || isVercel) {
+    const isLocal = origin.includes('localhost');
+    const isVercel = origin.match(/https?:\/\/.*\.vercel\.app$/);
+
+    if (isLocal || isVercel || allowedOrigins.includes(origin)) {
+      console.log(`✅ [CORS DEBUG] Allowed!`);
       callback(null, true);
     } else {
-      console.warn(`🚫 CORS blocked for origin: ${origin}`);
+      console.warn(`🚫 [CORS DEBUG] Blocked: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
