@@ -30,3 +30,8 @@ dist-ssr
 
 # Google Service Account
 service-account.json
+
+# Ignore all JSON keys but keep config files
+*.json
+!package.json
+!tsconfig.json
