@@ -1,7 +1,7 @@
 import { BetaAnalyticsDataClient } from '@google-analytics/data';
 import { BigQuery } from '@google-cloud/bigquery';  // เพิ่ม import สำหรับ BigQuery
 import { ga4Config } from '../config/ga4.config.js'; // ✅ แก้เป็น .js
-import type { AnalyticsData, LiveUsersData, DetailedAnalytics } from '../types/analytics';
+import type { AnalyticsData, LiveUsersData, DetailedAnalytics } from '../types/analytics.js';
 
 class GA4Service {
   private analyticsDataClient: BetaAnalyticsDataClient;
