@@ -1,10 +1,15 @@
 import { AnalyticsData, LiveUsersData, DetailedAnalytics } from '../types/analytics';
 
 // ใช้ base URL จาก environment variable (เช่นของ Koyeb / Render)
-const API_BASE =
+let API_BASE =
   (import.meta as any).env?.VITE_API_URL ||
   import.meta.env.VITE_API_URL ||
-  'http://localhost:3001';
+  'http://localhost:8000'; // เปลี่ยนให้ตรงกับ backend default
+
+// ป้องกันกรณีลืมใส่ http:// หรือ https://
+if (API_BASE && !API_BASE.startsWith('http')) {
+  API_BASE = `https://${API_BASE}`;
+}
 
 console.log('[analyticsApi] Using API BASE =>', API_BASE);
 

@@ -12,11 +12,24 @@ const app = express();
 const allowedOrigins: (string | boolean | RegExp)[] = [
   'http://localhost:5173', // Vite dev server
   'http://localhost:5174', // เพิ่ม local dev port
+  'http://localhost:8000',
   process.env.FRONTEND_URL?.replace(/\/$/, '') // production frontend, ตัด / ท้ายถ้ามี
 ].filter((origin): origin is string => Boolean(origin));
 
+console.log('🔒 Allowed CORS Origins:', allowedOrigins);
+
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`🚫 CORS blocked for origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 

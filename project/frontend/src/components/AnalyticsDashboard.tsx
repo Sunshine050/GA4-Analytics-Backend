@@ -24,7 +24,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { analyticsApi } from '../services/api';
-import { DetailedAnalytics, LiveUsersData } from '../types/analytics';
+import { AnalyticsData, DetailedAnalytics, LiveUsersData } from '../types/analytics';
 import MetricCard from './MetricCard';
 import DataList from './DataList';
 
@@ -134,13 +134,7 @@ function AnalyticsChart({ data }: AnalyticsChartProps) {
 export default function AnalyticsDashboard() {
   const [liveUsers, setLiveUsers] = useState(0);
   const [analytics, setAnalytics] = useState<DetailedAnalytics | null>(null);
-  const [summary, setSummary] = useState<{
-    totalUsers: number;
-    totalPageViews: number;
-    totalSessions: number;
-    avgSessionDuration: number;
-    bounceRate: number;
-  } | null>(null);
+  const [summary, setSummary] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -208,7 +202,7 @@ export default function AnalyticsDashboard() {
         users: d.users || 0,
         pageViews: d.pageViews || 0,
         sessions: d.sessions || 0,
-        topPage: d.page || 'N/A',
+        topPage: (d as any).page || 'N/A',
       };
     });
   }, [analytics]);
@@ -220,10 +214,10 @@ export default function AnalyticsDashboard() {
 
   // Use summary data for metrics
   const totals = useMemo(() => ({
-    totalUsers: summary?.totalUsers || 0,
+    totalUsers: summary?.totalVisitors || 0,
     totalPageViews: summary?.totalPageViews || 0,
     totalSessions: summary?.totalSessions || 0,
-    avgSessionDuration: summary?.avgSessionDuration || 120, // Fallback
+    avgSessionDuration: summary?.averageSessionDuration || 120, // Fallback
     bounceRate: summary?.bounceRate || 34.8, // Fallback
   }), [summary]);
 
@@ -309,8 +303,18 @@ export default function AnalyticsDashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-neutral-900 to-black flex items-center justify-center p-4">
         <div className="bg-neutral-900/50 backdrop-blur-sm border border-red-500/30 rounded-2xl p-8 text-center max-w-md">
-          <div className="text-red-400 text-2xl mb-4">เกิดข้อผิดพลาด</div>
-          <div className="text-neutral-300 mb-6">{error}</div>
+          <div className="text-red-400 text-2xl mb-4">เกิดข้อผิดพลาดในการเชื่อมต่อ</div>
+          <div className="text-neutral-300 mb-6 font-mono text-sm bg-black/30 p-4 rounded-lg">
+            {error}
+            {error.includes('Failed to fetch') && (
+              <p className="mt-4 text-amber-400 text-xs text-left border-t border-white/10 pt-4">
+                คำแนะนำ: <br />
+                1. ตรวจสอบว่า Backend กำลังรันอยู่ <br />
+                2. ตรวจสอบ VITE_API_URL ใน Environment Variables <br />
+                3. ตรวจสอบการตั้งค่า CORS ใน Backend (FRONTEND_URL)
+              </p>
+            )}
+          </div>
           <button
             onClick={() => {
               setLoading(true);

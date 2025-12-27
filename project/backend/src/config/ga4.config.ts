@@ -13,6 +13,6 @@ export const ga4Config = {
 };
 
 export const serverConfig = {
-  port: Number(process.env.PORT) || 3000,
+  port: Number(process.env.PORT) || 8000,
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 };
